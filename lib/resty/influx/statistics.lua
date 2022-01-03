@@ -26,10 +26,6 @@ local _cache_cfg
 local _cache
 local _server_name
 
-local function logWithPid(level, ...)
-    log(level, "Nginx Worker[", ngx.worker.id(), "] ", { ... })
-end
-
 -- the submitted information is combined to reduce the amount of data sent and improve the performance
 local function calculate(statistic, count, cost)
     statistic.count = statistic.count + count
@@ -48,7 +44,7 @@ end
 -- upload statistics
 local function upload()
     if not _enabled then
-        logWithPid(WARN, "Influx statistics enabled false")
+        log(WARN, "Influx statistics enabled false")
         return
     end
 
@@ -74,7 +70,7 @@ local function upload()
 
     local ok, err = _influx:flush()
     if not ok then
-        logWithPid(ERR, "Upload statistics to influxdb fail, error:", err)
+        log(ERR, "Upload statistics to influxdb fail, error:", err)
     end
 end
 
@@ -92,20 +88,20 @@ _M.configure = function(opts)
     assert(type(opts) == "table", "Expected a table, got " .. type(opts))
 
     if opts.enabled == false then
-        logWithPid(WARN, "Switch off")
+        log(WARN, "Switch off")
         return
     end
 
     local ok, err = influx_util.validate_options(opts.influx_cfg)
     if not ok then
-        logWithPid(ERR, "Influxdb config err, error: ", err)
+        log(ERR, "Influxdb config err, error: ", err)
         return
     end
     _influx_cfg = opts.influx_cfg
 
     local influx, err = influx_object:new(_influx_cfg)
     if not ok then
-        logWithPid(ERR, "Influxdb initialization failed, error: ", err)
+        log(ERR, "Influxdb initialization failed, error: ", err)
         return
     end
     _influx = influx
@@ -118,7 +114,7 @@ _M.configure = function(opts)
 
     local cache, err = lru_cache.new(opts.cache_cfg.max_items)
     if not cache then
-        logWithPid(ERR, "Lru cache initialization failed, error: ", err)
+        log(ERR, "Lru cache initialization failed, error: ", err)
         return
     end
     _cache = cache
@@ -128,7 +124,7 @@ _M.configure = function(opts)
 
     -- init upload nginx timer
     if not new_timer then
-        logWithPid(ERR, "Nginx timer component is not available")
+        log(ERR, "Nginx timer component is not available")
         return
     end
 
@@ -142,19 +138,19 @@ _M.configure = function(opts)
 
             local ok, err = new_timer(opts.upload_delay_seconds, check)
             if not ok then
-                logWithPid(ERR, "Nginx timer create fail, error: ", err)
+                log(ERR, "Nginx timer create fail, error: ", err)
                 return
             end
         end
     end
     local ok, err = new_timer(opts.upload_delay_seconds, check)
     if not ok then
-        logWithPid(ERR, "Nginx timer create fail, error: ", err)
+        log(ERR, "Nginx timer create fail, error: ", err)
         return
     end
 
     _enabled = true
-    logWithPid(INFO, "Influx statistics configure success")
+    log(INFO, "Influx statistics configure success")
 end
 
 -- add statistical buried point information
