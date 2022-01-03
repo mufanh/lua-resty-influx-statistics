@@ -1,8 +1,18 @@
 use strict;
 use warnings;
+
+use lib 'lib';
 use Test::Nginx::Socket::Lua;
+use Cwd qw(cwd);
 
 plan tests => 3 * blocks() + 2;
+
+my $pwd = cwd();
+
+our $HttpConfig = <<_EOC_;
+    lua_socket_log_errors off;
+    lua_package_path "$pwd/lib/?.lua;;";
+_EOC_
 
 no_shuffle();
 run_tests();
@@ -10,7 +20,9 @@ run_tests();
 __DATA__
 
 === TEST 1: sanity
---- http_config
+--- http_config eval
+"$::HttpConfig"
+. q{
 init_worker_by_lua_block {
     local influx_statistics = require "resty.influx.statistics"
 
