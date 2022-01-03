@@ -49,7 +49,9 @@ local function upload()
         return
     end
 
+    -- if cache max count > cfg, may lost some data
     local keys = _cache:get_keys(_cache_cfg.max_count)
+    local need_flush = false
     for _, k in pairs(keys) do
         local statistic = _cache:get(k)
         if statistic and statistic.key then
@@ -66,12 +68,19 @@ local function upload()
             _influx:add_field("total", statistic.total)
             _influx:add_field("average", statistic.average)
             _influx:buffer()
+
+            need_flush = true
         end
     end
 
-    local ok, err = _influx:flush()
-    if not ok then
-        log(ERR, "Upload statistics to influxdb fail, error:", err)
+    -- clear all
+    _cache:flush_all()
+
+    if need_flush then
+        local ok, err = _influx:flush()
+        if not ok then
+            log(ERR, "Upload statistics to influxdb fail, error:", err)
+        end
     end
 end
 

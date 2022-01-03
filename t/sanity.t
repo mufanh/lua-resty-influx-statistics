@@ -33,7 +33,7 @@ __DATA__
             server_name = "test",
             influx_cfg = {
                 host = "127.0.0.1",
-                port = 12345,
+                port = 8086,
                 db = "test",
                 proto = "http",
             },
@@ -42,7 +42,7 @@ __DATA__
                 expire_seconds = 120,
                 max_count = 800
             },
-            upload_delay_seconds = 10
+            upload_delay_seconds = 1
         }
         influx_statistics.configure(opts)
     }
@@ -54,10 +54,10 @@ __DATA__
             local influx_statistics = require "resty.influx.statistics"
 
             local startTime = ngx.now()
-            ngx.sleep(2)
+            ngx.sleep(1)
             influx_statistics.accumulate('app', 'test', '/t', 'ok', 1, ngx.now() - startTime)
 
-            ngx.sleep(50)
+            ngx.sleep(10)
             ngx.say('ok')
 		}
 	}
