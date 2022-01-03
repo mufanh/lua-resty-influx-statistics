@@ -8,6 +8,7 @@ local ERR = ngx.ERR
 local WARN = ngx.WARN
 local INFO = ngx.INFO
 local new_timer = ngx.timer.at
+local table_concat = table.concat
 
 local influx_util = require "resty.influx.util"
 local influx_object = require "resty.influx.object"
@@ -159,7 +160,7 @@ function _M.accumulate(app, category, action, result, count, cost)
         return
     end
 
-    local key = table.concat(app, category, action, result)
+    local key = table_concat({ app, category, action, result })
     local statistic = _cache:get(key)
     if statistic then
         statistic = { key = key, app = app, category = category, action = action, result = result,
