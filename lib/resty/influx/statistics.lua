@@ -170,7 +170,7 @@ function _M.accumulate(app, category, action, result, count, cost)
 
     -- you need to ensure that the statistics are sent to influxdb within
     -- the expiration time, otherwise the statistics may be lost
-    _cache:put(key, statistic, _cache_cfg.expire_seconds or DEFAULT_LRU_CACHE_EXPIRE_SECONDS)
+    _cache:set(key, statistic, _cache_cfg.expire_seconds or DEFAULT_LRU_CACHE_EXPIRE_SECONDS)
 end
 
 return _M
