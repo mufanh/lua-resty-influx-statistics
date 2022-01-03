@@ -23,26 +23,27 @@ __DATA__
 --- http_config eval
 "$::HttpConfig"
 . q{
-init_worker_by_lua_block {
-    local influx_statistics = require "resty.influx.statistics"
+    init_worker_by_lua_block {
+        local influx_statistics = require "resty.influx.statistics"
 
-    local opts = {
-        enabled = true,
-        server_name = "test",
-        influx_cfg = {
-            host = "127.0.0.1",
-            port = 12345,
-            db = "test",
-            proto = "http",
-        },
-        cache_cfg = {
-            max_items = 1000,
-            expire_seconds = 120,
-            max_count = 800
-        },
-        upload_delay_seconds = 60
+        local opts = {
+            enabled = true,
+            server_name = "test",
+            influx_cfg = {
+                host = "127.0.0.1",
+                port = 12345,
+                db = "test",
+                proto = "http",
+            },
+            cache_cfg = {
+                max_items = 1000,
+                expire_seconds = 120,
+                max_count = 800
+            },
+            upload_delay_seconds = 60
+        }
+        influx_statistics.configure(opts)
     }
-    influx_statistics.configure(opts)
 }
 
 --- config
