@@ -20,6 +20,9 @@ run_tests();
 __DATA__
 
 === TEST 1: sanity
+--- main_config
+worker_processes 2;
+
 --- http_config eval
 "$::HttpConfig"
 . q{
