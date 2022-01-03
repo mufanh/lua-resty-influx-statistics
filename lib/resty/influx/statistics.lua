@@ -101,7 +101,7 @@ _M.configure = function(opts)
     _influx_cfg = opts.influx_cfg
 
     local influx, err = influx_object:new(_influx_cfg)
-    if not ok then
+    if not influx then
         log(ERR, "Influxdb initialization failed, error: ", err)
         return
     end

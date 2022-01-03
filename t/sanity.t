@@ -7,7 +7,7 @@ use lib 'lib';
 use Test::Nginx::Socket::Lua;
 use Cwd qw(cwd);
 
-plan tests => 3 * blocks() + 2;
+plan tests => 3 * blocks();
 
 my $pwd = cwd();
 
