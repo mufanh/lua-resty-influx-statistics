@@ -1,3 +1,5 @@
+# vim:set ft= ts=4 sw=4 et:
+
 use strict;
 use warnings;
 
@@ -20,9 +22,6 @@ run_tests();
 __DATA__
 
 === TEST 1: sanity
---- main_config
-worker_processes 2;
-
 --- http_config eval
 "$::HttpConfig"
 . q{
