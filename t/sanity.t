@@ -42,7 +42,7 @@ __DATA__
                 expire_seconds = 120,
                 max_count = 800
             },
-            upload_delay_seconds = 60
+            upload_delay_seconds = 10
         }
         influx_statistics.configure(opts)
     }
@@ -57,7 +57,7 @@ __DATA__
             ngx.sleep(2)
             influx_statistics.accumulate('app', 'test', '/t', 'ok', 1, ngx.now() - startTime)
 
-            ngx.sleep(200)
+            ngx.sleep(50)
             ngx.say('ok')
 		}
 	}
