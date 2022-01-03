@@ -162,7 +162,7 @@ function _M.accumulate(app, category, action, result, count, cost)
 
     local key = table_concat({ app, category, action, result })
     local statistic = _cache:get(key)
-    if statistic then
+    if statistic == nil then
         statistic = { key = key, app = app, category = category, action = action, result = result,
                       count = 0, min = 0, max = 0, total = 0, average = 0 }
     end
