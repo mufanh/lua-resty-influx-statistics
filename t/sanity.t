@@ -7,15 +7,16 @@ use lib 'lib';
 use Test::Nginx::Socket::Lua;
 use Cwd qw(cwd);
 
-plan tests => 3 * blocks();
+
+plan tests => 3 * blocks() * 20;
 
 my $pwd = cwd();
 
 our $HttpConfig = <<_EOC_;
-    lua_socket_log_errors off;
     lua_package_path "$pwd/lib/?.lua;;";
 _EOC_
 
+repeat_each(20);
 no_shuffle();
 run_tests();
 
@@ -57,7 +58,6 @@ __DATA__
             ngx.sleep(1)
             influx_statistics.accumulate('app', 'test', '/t', 'ok', 1, ngx.now() - startTime)
 
-            ngx.sleep(10)
             ngx.say('ok')
 		}
 	}
