@@ -3,16 +3,23 @@
 local _M = { _VERSION = "0.0.1" }
 
 local ngx = ngx
+local table = table
+local require = require
+local pairs = pairs
+local type = type
+local assert = assert
+
 local log = ngx.log
 local ERR = ngx.ERR
 local WARN = ngx.WARN
 local INFO = ngx.INFO
-local new_timer = ngx.timer.at
-local table_concat = table.concat
 
 local influx_util = require "resty.influx.util"
 local influx_object = require "resty.influx.object"
 local lru_cache = require "resty.lrucache"
+
+local table_concat = table.concat
+local new_timer = assert(ngx.timer.at, "Nginx timer component is not available")
 
 -- constants
 local DEFAULT_LRU_CACHE_MAX_ITEMS = 2048
@@ -20,69 +27,13 @@ local DEFAULT_LRU_CACHE_EXPIRE_SECONDS = 120
 local DEFAULT_UPLOAD_DELAY_SECONDS = 60
 
 -- globals as upvalues (module is intended to run once per worker process)
-local _enabled = false
+local _configured = false
+
 local _influx_cfg
-local _influx
-local _cache_cfg
 local _cache
+local _cache_cfg
+local _upload_delay_seconds
 local _server_name
-
--- the submitted information is combined to reduce the amount of data sent and improve the performance
-local function calculate(statistic, count, cost)
-    statistic.count = statistic.count + count
-    if statistic.min < 0.00000001 or cost < statistic.min then
-        statistic.min = cost
-    end
-    if cost > statistic.max then
-        statistic.max = cost
-    end
-    statistic.total = statistic.total + cost
-    if statistic.count > 0 then
-        statistic.average = statistic.total / statistic.count
-    end
-end
-
--- upload statistics
-local function upload()
-    if not _enabled then
-        log(WARN, "Influx statistics enabled false")
-        return
-    end
-
-    -- if cache max count > cfg, may lost some data
-    local keys = _cache:get_keys(_cache_cfg.max_count)
-    local need_flush = false
-    for _, k in pairs(keys) do
-        local statistic = _cache:get(k)
-        if statistic and statistic.key then
-            _influx:set_measurement('statistics')
-            _influx:add_tag("server", _server_name)
-            _influx:add_tag("event", statistic.key)
-            _influx:add_tag("app", statistic.app)
-            _influx:add_tag("category", statistic.category)
-            _influx:add_tag("action", statistic.action)
-            _influx:add_tag("result", statistic.result)
-            _influx:add_field("count", statistic.count)
-            _influx:add_field("min", statistic.min)
-            _influx:add_field("max", statistic.max)
-            _influx:add_field("total", statistic.total)
-            _influx:add_field("average", statistic.average)
-            _influx:buffer()
-
-            need_flush = true
-        end
-    end
-
-    -- clear all
-    _cache:flush_all()
-
-    if need_flush then
-        local ok, err = _influx:flush()
-        if not ok then
-            log(ERR, "Upload statistics to influxdb fail, error:", err)
-        end
-    end
-end
 
 --- configure influx statistics
 --- opts:
@@ -109,13 +60,6 @@ _M.configure = function(opts)
     end
     _influx_cfg = opts.influx_cfg
 
-    local influx, err = influx_object:new(_influx_cfg)
-    if not influx then
-        log(ERR, "Influxdb initialization failed, error: ", err)
-        return
-    end
-    _influx = influx
-
     if not opts.cache_cfg then
         opts.cache_cfg = {}
     end
@@ -132,40 +76,119 @@ _M.configure = function(opts)
     -- server_name
     _server_name = opts.server_name or "influx-statistics"
 
-    -- init upload nginx timer
-    if not new_timer then
-        log(ERR, "Nginx timer component is not available")
-        return
+    -- upload delay
+    _upload_delay_seconds = opts.upload_delay_seconds or DEFAULT_UPLOAD_DELAY_SECONDS
+
+    _configured = true
+    log(INFO, "Influx statistics configure success")
+end
+
+
+-- upload statistics
+local function upload(influx)
+    -- if cache max count > cfg, may lost some data
+    local keys = _cache:get_keys(_cache_cfg.max_count)
+    local need_flush = false
+    for _, k in pairs(keys) do
+        local statistic = _cache:get(k)
+        if statistic and statistic.key then
+            influx:set_measurement('statistics')
+            influx:add_tag("server", _server_name)
+            influx:add_tag("event", statistic.key)
+            influx:add_tag("app", statistic.app)
+            influx:add_tag("category", statistic.category)
+            influx:add_tag("action", statistic.action)
+            influx:add_tag("result", statistic.result)
+            influx:add_field("count", statistic.count)
+            influx:add_field("min", statistic.min)
+            influx:add_field("max", statistic.max)
+            influx:add_field("total", statistic.total)
+            influx:add_field("average", statistic.average)
+            influx:buffer()
+
+            need_flush = true
+        end
     end
 
-    opts.upload_delay_seconds = opts.upload_delay_seconds or DEFAULT_UPLOAD_DELAY_SECONDS
+    -- clear all
+    _cache:flush_all()
+
+    if need_flush then
+        local ok, err = influx:flush()
+        if not ok then
+            log(ERR, "Upload statistics to influxdb fail, error:", err)
+        end
+    end
+end
+
+local _status = lru_cache.new(1)
+local function set_started()
+    _status:set("STARTED", true)
+end
+local function is_started()
+    if _status:get("STARTED") ~= true then
+        return false
+    end
+    return true
+end
+
+function _M.start()
+    assert(_configured, "statistics not configured")
+
+    local influx, err = influx_object:new(_influx_cfg)
+    if not influx then
+        log(ERR, "Influxdb initialization failed, error: ", err)
+        return
+    end
 
     local check
     check = function(premature)
         if not premature then
             -- upload statistic
-            upload()
+            upload(influx)
 
-            local ok, err = new_timer(opts.upload_delay_seconds, check)
+            local ok, err = new_timer(_upload_delay_seconds, check)
             if not ok then
                 log(ERR, "Nginx timer create fail, error: ", err)
                 return
             end
         end
     end
-    local ok, err = new_timer(opts.upload_delay_seconds, check)
+    local ok, err = new_timer(_upload_delay_seconds, check)
     if not ok then
         log(ERR, "Nginx timer create fail, error: ", err)
         return
     end
 
-    _enabled = true
+    -- set started status
+    set_started()
+
     log(INFO, "Influx statistics configure success")
+end
+
+-- the submitted information is combined to reduce the amount of data sent and improve the performance
+local function calculate(statistic, count, cost)
+    statistic.count = statistic.count + count
+    if statistic.min < 0.00000001 or cost < statistic.min then
+        statistic.min = cost
+    end
+    if cost > statistic.max then
+        statistic.max = cost
+    end
+    statistic.total = statistic.total + cost
+    if statistic.count > 0 then
+        statistic.average = statistic.total / statistic.count
+    end
 end
 
 -- add statistical buried point information
 function _M.accumulate(app, category, action, result, count, cost)
-    if not _enabled then
+    if not _configured then
+        return
+    end
+
+    if not is_started() then
+        log(WARN, "Influx statistics not start or start fail")
         return
     end
 

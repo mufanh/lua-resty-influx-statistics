@@ -26,7 +26,7 @@ __DATA__
 --- http_config eval
 "$::HttpConfig"
 . q{
-    init_worker_by_lua_block {
+    init_by_lua_block {
         local influx_statistics = require "resty.influx.statistics"
 
         local opts = {
@@ -47,6 +47,12 @@ __DATA__
         }
         influx_statistics.configure(opts)
     }
+
+
+    init_worker_by_lua_block {
+        local influx_statistics = require "resty.influx.statistics"
+        influx_statistics.start()
+    }
 }
 
 --- config
@@ -57,6 +63,8 @@ __DATA__
             local startTime = ngx.now()
             ngx.sleep(1)
             influx_statistics.accumulate('app', 'test', '/t', 'ok', 1, ngx.now() - startTime)
+
+            ngx.sleep(1)
 
             ngx.say('ok')
 		}
