@@ -8,6 +8,7 @@ local require = require
 local pairs = pairs
 local type = type
 local assert = assert
+local error = error
 
 local log = ngx.log
 local ERR = ngx.ERR
@@ -20,6 +21,7 @@ local lru_cache = require "resty.lrucache"
 
 local table_concat = table.concat
 local new_timer = assert(ngx.timer.at, "Nginx timer component is not available")
+local get_phase = ngx.get_phase
 
 -- constants
 local DEFAULT_LRU_CACHE_MAX_ITEMS = 2048
@@ -47,6 +49,7 @@ local _server_name
 --- upload_delay_seconds: upload task run delay deconds
 _M.configure = function(opts)
     assert(type(opts) == "table", "Expected a table, got " .. type(opts))
+    assert(get_phase() == "init", "Statistics configure at init phase")
 
     if opts.enabled == false then
         log(WARN, "Switch off")
@@ -82,7 +85,6 @@ _M.configure = function(opts)
     _configured = true
     log(INFO, "Influx statistics configure success")
 end
-
 
 -- upload statistics
 local function upload(influx)
@@ -132,12 +134,17 @@ local function is_started()
     return true
 end
 
+-- run at each worker
 function _M.start()
-    assert(_configured, "statistics not configured")
+    assert(get_phase() == "init_worker", "Statistics start at init worker phase")
+
+    if not _configured then
+        return
+    end
 
     local influx, err = influx_object:new(_influx_cfg)
     if not influx then
-        log(ERR, "Influxdb initialization failed, error: ", err)
+        error("Influxdb initialization failed, error: " .. err or "unknown")
         return
     end
 
