@@ -30,6 +30,7 @@ local DEFAULT_UPLOAD_DELAY_SECONDS = 60
 
 -- globals as upvalues (module is intended to run once per worker process)
 local _configured = false
+local _started = false
 
 local _influx_cfg
 local _cache
@@ -123,17 +124,6 @@ local function upload(influx)
     end
 end
 
-local _status = lru_cache.new(1)
-local function set_started()
-    _status:set("STARTED", true)
-end
-local function is_started()
-    if _status:get("STARTED") ~= true then
-        return false
-    end
-    return true
-end
-
 -- run at each worker
 function _M.start()
     assert(get_phase() == "init_worker", "Statistics start at init worker phase")
@@ -168,7 +158,7 @@ function _M.start()
     end
 
     -- set started status
-    set_started()
+    _started = true
 
     log(INFO, "Influx statistics configure success")
 end
@@ -194,7 +184,7 @@ function _M.accumulate(app, category, action, result, count, cost)
         return
     end
 
-    if not is_started() then
+    if not _started then
         log(WARN, "Influx statistics not start or start fail")
         return
     end

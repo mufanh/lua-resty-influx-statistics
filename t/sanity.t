@@ -8,7 +8,7 @@ use Test::Nginx::Socket::Lua;
 use Cwd qw(cwd);
 
 
-plan tests => 3 * blocks() * 20;
+plan tests => 3 * blocks() * 10;
 
 my $pwd = cwd();
 
@@ -16,7 +16,7 @@ our $HttpConfig = <<_EOC_;
     lua_package_path "$pwd/lib/?.lua;;";
 _EOC_
 
-repeat_each(20);
+repeat_each(10);
 no_shuffle();
 run_tests();
 
