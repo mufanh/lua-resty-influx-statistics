@@ -1,7 +1,7 @@
 package = "lua-resty-influx-statistics"
 version = "0.0.1-9"
 source = {
-   url = "git://github.com/mufanh/lua-resty-influx-statistics",
+   url = "https://github.com/mufanh/lua-resty-influx-statistics.git",
    tag = "v0.0.1-9",
    branch = "main"
 }
