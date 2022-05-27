@@ -1,8 +1,8 @@
 package = "lua-resty-influx-statistics"
-version = "0.0.1-10"
+version = "0.0.1-11"
 source = {
    url = "git://github.com/mufanh/lua-resty-influx-statistics",
-   tag = "v0.0.1-10",
+   tag = "v0.0.1-11",
    branch = "main"
 }
 description = {
@@ -14,7 +14,7 @@ description = {
 dependencies = {
   "lua >= 5.1",
   "lua-resty-http >= 0.8",
-  "lua-resty-influx >= 0.2.1-0",
+  "lua-resty-influx-mufanh >= 0.2.1-0",
   "lua-resty-lrucache >= 0.09-2"
 }
 build = {

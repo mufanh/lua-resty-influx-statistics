@@ -37,6 +37,8 @@ __DATA__
                 port = 8086,
                 db = "test",
                 proto = "http",
+                -- rp allow nil
+                rp = "test_rp",
             },
             cache_cfg = {
                 max_items = 1000,
